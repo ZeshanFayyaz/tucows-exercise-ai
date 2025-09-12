@@ -1,38 +1,27 @@
 import os
 import json
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
 from pydantic import ValidationError
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, RateLimitError, APIStatusError
 
 from .models import TicketResponse
+from .mcp import ALLOWED_ACTIONS  # single source of truth
 
-# Expanded set of allowed actions
-ALLOWED_ACTIONS = {
-    "none",
-    "escalate_to_abuse_team",
-    "escalate_to_billing",
-    "escalate_to_registrar",
-    "escalate_to_dns_team",
-    "escalate_to_legal",
-    "escalate_to_support_manager",
-    "reset_password",
-    "update_whois",
-    "verify_identity",
-    "transfer_domain",
-    "request_more_info",
-}
 
 def get_client() -> OpenAI:
     """
     Create an OpenAI-compatible client.
-    Works with OpenAI or Ollama (set OPENAI_BASE_URL).
+    - Works with OpenAI directly (set OPENAI_API_KEY).
+    - Works with OpenAI-compatible servers (set OPENAI_BASE_URL and OPENAI_API_KEY, e.g., 'sk-noop').
     """
     base_url = os.getenv("OPENAI_BASE_URL")
     api_key = os.getenv("OPENAI_API_KEY", "EMPTY")
     if base_url:
         return OpenAI(base_url=base_url, api_key=api_key)
     return OpenAI(api_key=api_key)
+
 
 def _strip_to_json(text: str) -> str:
     """
@@ -47,12 +36,13 @@ def _strip_to_json(text: str) -> str:
         return text[start : end + 1]
     return text
 
+
 def _coerce_to_schemaish(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize shapes before Pydantic validation.
     - references -> list[str]
-    - action_required -> one of ALLOWED_ACTIONS
-    - answer -> string
+    - action_required -> one of ALLOWED_ACTIONS (fallback: request_more_info)
+    - answer -> str
     """
     refs = data.get("references", [])
     if isinstance(refs, str):
@@ -67,13 +57,21 @@ def _coerce_to_schemaish(data: Dict[str, Any]) -> Dict[str, Any]:
     data["action_required"] = act
 
     data["answer"] = str(data.get("answer", ""))
-
     return data
 
-def call_llm(prompt: str, model: str | None = None) -> TicketResponse:
+
+def _fallback_ticket(message: str) -> TicketResponse:
+    return TicketResponse(
+        answer=message,
+        references=[],
+        action_required="request_more_info",
+    )
+
+
+def call_llm(prompt: str, model: Optional[str] = None) -> TicketResponse:
     """
     Call the LLM with the MCP prompt and enforce JSON schema.
-    Returns a validated TicketResponse.
+    Returns a validated TicketResponse, with one repair attempt if needed.
     """
     client = get_client()
     model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -81,53 +79,59 @@ def call_llm(prompt: str, model: str | None = None) -> TicketResponse:
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are a careful assistant. "
-                "Return ONLY valid JSON, no code fences, no prose."
-            ),
+            "content": "You are a careful assistant. Return ONLY valid JSON, no code fences, no prose.",
         },
         {"role": "user", "content": prompt},
     ]
 
-    # First attempt
-    resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        response_format={"type": "json_object"},
-        temperature=0,
-    )
-    text = resp.choices[0].message.content.strip()
-
-    # Parse
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        text = _strip_to_json(text)
-        data = json.loads(text)
-
-    # Validate
-    try:
-        data = _coerce_to_schemaish(data)
-        return TicketResponse(**data)
-    except (ValidationError, TypeError, json.JSONDecodeError):
-        # One repair pass
-        repair_messages = messages + [
-            {
-                "role": "system",
-                "content": (
-                    "Your last reply was not valid JSON. "
-                    "Reply again with ONLY the JSON object matching the schema."
-                ),
-            }
-        ]
-        resp2 = client.chat.completions.create(
+        # First attempt (ask the model to return a JSON object)
+        resp = client.chat.completions.create(
             model=model,
-            messages=repair_messages,
+            messages=messages,
             response_format={"type": "json_object"},
             temperature=0,
+            timeout=30,
         )
-        text2 = resp2.choices[0].message.content.strip()
-        text2 = _strip_to_json(text2)
-        data2 = json.loads(text2)
-        data2 = _coerce_to_schemaish(data2)
-        return TicketResponse(**data2)
+        text = resp.choices[0].message.content.strip()
+
+        # Parse
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            text = _strip_to_json(text)
+            data = json.loads(text)
+
+        # Validate
+        try:
+            data = _coerce_to_schemaish(data)
+            return TicketResponse(**data)
+        except (ValidationError, TypeError, json.JSONDecodeError):
+            # One repair pass: ask the model to fix the JSON
+            repair_messages = messages + [
+                {
+                    "role": "system",
+                    "content": (
+                        "Your last reply was not valid JSON. "
+                        "Reply again with ONLY the JSON object matching the schema."
+                    ),
+                }
+            ]
+            resp2 = client.chat.completions.create(
+                model=model,
+                messages=repair_messages,
+                response_format={"type": "json_object"},
+                temperature=0,
+                timeout=30,
+            )
+            text2 = resp2.choices[0].message.content.strip()
+            text2 = _strip_to_json(text2)
+            data2 = json.loads(text2)
+            data2 = _coerce_to_schemaish(data2)
+            return TicketResponse(**data2)
+
+    except (APIConnectionError, RateLimitError, APIStatusError) as e:
+        return _fallback_ticket(f"LLM API error: {e.__class__.__name__}: {str(e)}")
+    except Exception as e:
+        # Last-resort guard so the API never 500s
+        return _fallback_ticket(f"LLM unexpected error: {str(e)}")

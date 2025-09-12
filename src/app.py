@@ -6,21 +6,20 @@ from .llm import call_llm
 
 app = FastAPI(title="Knowledge Assistant", version="1.0.0")
 
-# Build knowledge base on startup
-kb = KnowledgeBase()
+# Lazy init
+kb = None
 
 @app.post("/resolve-ticket", response_model=TicketResponse)
 def resolve_ticket(ticket: TicketRequest) -> TicketResponse:
-    """
-    Main entrypoint: takes a support ticket, retrieves context,
-    builds MCP prompt, calls the LLM, and returns structured JSON.
-    """
-    # Step 1: Retrieve relevant chunks
+    global kb
+    if kb is None:
+        kb = KnowledgeBase()
+
     retrieved = kb.retrieve(ticket.ticket_text, top_k=3)
-
-    # Step 2: Build MCP prompt
     prompt = build_prompt(ticket.ticket_text, retrieved)
-
-    # Step 3: Call LLM and return TicketResponse
     response = call_llm(prompt)
     return response
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
