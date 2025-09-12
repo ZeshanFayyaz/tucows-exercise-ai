@@ -29,3 +29,22 @@ def _chunk(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> L
         if start >= n: break
     return chunks
 
+@dataclass
+class KBEntry:
+    """
+    Represents one chunk of knowledge.
+    - text: the actual chunk content
+    - reference: where it came from (doc title + chunk number)
+    """
+    text: str
+    reference: str
+
+class KnowledgeBase:
+    def __init__(self, docs_glob: str = "data/docs/*.md"):
+        self.entries: List[KBEntry] = []
+
+        # Load docs and split into chunks
+        for title, content in _read_docs(docs_glob):
+            for i, ch in enumerate(_chunk(content)):
+                ref = f"{title}, chunk {i+1}"
+                self.entries.append(KBEntry(text=ch, reference=ref))
