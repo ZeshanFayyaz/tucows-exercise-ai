@@ -40,7 +40,9 @@ class KBEntry:
     reference: str
 
 class KnowledgeBase:
-    def __init__(self, docs_glob: str = "data/docs/*.md"):
+    def __init__(self, docs_glob: str = "data/docs/*.md", 
+                 model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
         self.entries: List[KBEntry] = []
 
         # Load docs and split into chunks
@@ -48,3 +50,29 @@ class KnowledgeBase:
             for i, ch in enumerate(_chunk(content)):
                 ref = f"{title}, chunk {i+1}"
                 self.entries.append(KBEntry(text=ch, reference=ref))
+
+                # Create embeddings for all chunks
+        texts = [e.text for e in self.entries]
+        embs = self.model.encode(
+            texts,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            show_progress_bar=False
+        )
+
+        # Store in FAISS index
+        dim = embs.shape[1]  # embedding size
+        self.index = faiss.IndexFlatIP(dim)  # cosine similarity via inner product
+        self.index.add(embs.astype("float32"))
+        self._embs = embs  # keep for debugging/inspection
+
+    def retrieve(self, query: str, top_k: int = 3) -> List[Dict]:
+        """Retrieve top-k most relevant chunks for the query."""
+        q_emb = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True).astype("float32")
+        scores, idxs = self.index.search(q_emb, top_k)
+
+        results = []
+        for i in idxs[0]:
+            e = self.entries[int(i)]
+            results.append({"text": e.text, "reference": e.reference})
+        return results
