@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   app:
     build: .
@@ -13,6 +11,7 @@ services:
       - OPENAI_BASE_URL=http://ollama:11434/v1
       - OPENAI_API_KEY=sk-noop
       - OPENAI_MODEL=llama3.1:latest
+
     depends_on:
       - ollama
 
@@ -26,3 +25,4 @@ services:
 
 volumes:
   ollama_data:
+
