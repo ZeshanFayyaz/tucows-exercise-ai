@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: app
+    command: uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_BASE_URL=http://ollama:11434/v1
+      - OPENAI_API_KEY=sk-noop
+      - OPENAI_MODEL=llama3.1:latest
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  ollama_data:
