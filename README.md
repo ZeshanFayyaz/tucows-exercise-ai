@@ -25,3 +25,26 @@ The result is that support agents get clear, structured answers without having t
 - **Interactive testing** – use `./ask.sh` to simplify the input process, one can type a ticket and get an instant JSON reply.  
 - **Unit tested** – core pieces (models, RAG, LLM integration) covered with simple pytest tests.  
 
+## Architecture 
+
+The system has three main pieces that work together:
+
+1. **Knowledge Base (RAG)**  
+   - Loads support docs and policies.  
+   - Splits them into overlapping chunks.  
+   - Embeds each chunk using SentenceTransformers.  
+   - Stores embeddings in a FAISS index for fast retrieval.  
+
+2. **LLM (via Ollama)**  
+   - Takes the top-k relevant chunks + the ticket text.  
+   - Generates a JSON answer that follows the MCP schema.  
+   - Default model: `llama3.1:latest`.  
+
+3. **FastAPI Service**  
+   - Exposes a `/resolve-ticket` endpoint.  
+   - Accepts raw ticket text, retrieves context, calls the LLM, and returns structured JSON.  
+   - Includes a `/ping` endpoint for health checks.  
+
+The following image depicts the system architecture: 
+
+![System Architecture](refs/architecture.png)
