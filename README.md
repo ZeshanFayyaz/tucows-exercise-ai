@@ -16,14 +16,81 @@ The result is that support agents get clear, structured answers without having t
 
 ---
 
-## Features 
+## Tech Stack
+
+- **FastAPI** - lightweight framework for serving the Knowledge Assistant API
+- **SentenceTransformers + FAISS** - embedding documentation and retrieving document chunks
+- **Ollama** - LLM backend for generating structured MCP-compliant answers
+- **Pydantic** - schema validation for request and response models
+- **Docker Compose** - setup for reproducible local deployment
+- **Pytest** - unit testing framework to ensure quality and reliability
+
+---
+
+## Key Features 
 
 - **Context-aware answers** – looks up the most relevant chunks from documentation and policies before replying.  
+- **Helper script (`./ask.sh`)** – interactive CLI to test tickets without curl/Postman; type a ticket and get instant JSON back 
 - **MCP-compliant output** – always returns JSON with `answer`, `references`, and `action_required`.  
 - **Expandable action set** – includes common support workflows like WHOIS updates, abuse escalation, billing, and more.  
-- **Containerized setup** – everything runs through Docker Compose with one command.  
-- **Interactive testing** – use `./ask.sh` to simplify the input process, one can type a ticket and get an instant JSON reply.  
+- **Containerized setup** – everything runs through Docker Compose with one command.   
 - **Unit tested** – core pieces (models, RAG, LLM integration) covered with simple pytest tests.  
+
+---
+
+## Running Locally  
+
+To run the Knowledge Assistant on your machine:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ZeshanFayyaz/tucows-exercise-ai.git
+
+   cd tucows-exercise-ai
+   ```
+
+2. **Build and start the containers**
+
+    Make sure Docker is running, then run: 
+    ```bash
+    docker compose up --build
+    ```
+
+    This starts: 
+    - FastAPI server (`listening on http://127.0.0.1:8000`)
+
+    - Ollama LLM backend (`port 11434`)
+
+3. **Pull the model (only needed for the first run)**
+
+    In another terminal: 
+    ```bash
+    docker compose exec ollama ollama pull llama3.1:latest
+    ```
+
+
+4. **Ask a question**
+
+    Using the provided helper script: 
+    ```bash
+    ./ask.sh
+    ```
+
+    Example: 
+    ```text
+    Enter ticket text: My domain was suspended and I didn’t get any notice. How do I reactivate it?
+    ```
+
+    The system will return a structured JSON response like: 
+    ```json
+    {
+      "answer": "Update your WHOIS details and contact support to request reactivation.",
+      "references": ["Policy: Domain Suspension Guidelines, Section 4.2"],
+      "action_required": "escalate_to_abuse_team"
+    }
+    ```
+
+---
 
 ## Architecture 
 
@@ -79,54 +146,22 @@ The system has several main pieces that work together:
 
 ---
 
-## Running Locally  
+## Configuration
 
-To run the Knowledge Assistant on your machine:
+The app reads environment variables for LLM backend:
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ZeshanFayyaz/tucows-exercise-ai.git
+- `OPENAI_BASE_URL` – defaults to `http://ollama:11434/v1`
+- `OPENAI_API_KEY` – dummy key for Ollama, real key if using OpenAI
+- `OPENAI_MODEL` – default: `llama3.1:latest`
 
-   cd tucows-exercise-ai
-   ```
+These are set automatically in `docker-compose.yml`, but can be overridden.
 
-2. **Build and start the containers**
+---
 
-    Make sure Docker is running, then run: 
-    ```bash
-    docker compose up --build
-    ```
+## Future Improvements
 
-    This starts: 
-    - FastAPI server (`listening on http://127.0.0.1:8000`)
-
-    - Ollama LLM backend (on `port 11434`)
-
-3. **Pull the model (only needed for the first run)**
-
-    In another terminal: 
-    ```bash
-    docker compose exec ollama ollama pull llama3.1:latest
-    ```
+- Add support for multi-turn conversations (not just single tickets)  
+- Improve action classification with a larger set of workflows  
+- Experiment with faster/smaller LLM models to reduce response latency  
 
 
-4. **Ask a question**
-
-    Using the provided helper script: 
-    ```bash
-    ./ask.sh
-    ```
-
-    Example: 
-    ```text
-    Enter ticket text: My domain was suspended and I didn’t get any notice. How do I reactivate it?
-    ```
-
-    The system will return a structured JSON response like: 
-    ```json
-    {
-      "answer": "Update your WHOIS details and contact support to request reactivation.",
-      "references": ["Policy: Domain Suspension Guidelines, Section 4.2"],
-      "action_required": "escalate_to_abuse_team"
-    }
-    ```
