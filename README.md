@@ -102,7 +102,7 @@ The following image depicts the system architecture:
 
 The system has several main pieces that work together:
 
-1. **Customer Ticker**  
+1. **Customer Ticket**  
    - The entry point to the system. A user (e.g. support agent) submits a raw ticket.  
    - Input can be provided via the included `./ask.sh` script (interactive CLI) or directly through the REST API.  
 
@@ -135,7 +135,8 @@ The system has several main pieces that work together:
 6. **LLM Wrapper**
    - Sends the structured prompt to the Ollama LLM backend (default: `llama3.1:latest`).  
    - The wrapper enforces JSON-only responses, validates them against a Pydantic schema, and retries if needed.  
-   - This layer abstracts away quirks of the model and guarantees stable outputs for the API. 
+   - I also experimented with smaller models, but found the answers to be noticeably less accurate and less useful.  
+   - For this reason, the default is set to `llama3.1:latest`, which gave the best balance of speed and quality in testing.
 
 7. **MCP JSON Response**
    - The final output returned to the client.  
@@ -162,6 +163,6 @@ These are set automatically in `docker-compose.yml`, but can be overridden.
 
 - Add support for multi-turn conversations (not just single tickets)  
 - Improve action classification with a larger set of workflows  
-- Experiment with faster/smaller LLM models to reduce response latency  
+- Experiment with faster/smaller LLM models to reduce response latency (smaller models show to decrease response quality severely) 
 
 
