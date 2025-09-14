@@ -48,6 +48,6 @@ The system has three main pieces that work together:
 The following image depicts the system architecture: 
 
 <div align="center">
-  <img src=".refs/architecture.svg" alt="Architecture Diagram" width="300"/>
+  <img src="refs/architecture.svg" alt="Architecture Diagram" width="300"/>
 </div>
 
