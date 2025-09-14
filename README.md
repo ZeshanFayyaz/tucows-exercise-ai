@@ -47,4 +47,4 @@ The system has three main pieces that work together:
 
 The following image depicts the system architecture: 
 
-![System Architecture](refs/architecture.png)
+![System Architecture](refs/architecture.svg)
