@@ -84,7 +84,7 @@ The system has several main pieces that work together:
 To run the Knowledge Assistant on your machine:
 
 1. **Clone the repository**
-   ```
+   ```bash
    git clone https://github.com/ZeshanFayyaz/tucows-exercise-ai.git
 
    cd tucows-exercise-ai
@@ -104,7 +104,7 @@ To run the Knowledge Assistant on your machine:
 
 3. **Pull the model (only needed for the first run)**
 
-    - In another terminal: 
+    In another terminal: 
     ```
     docker compose exec ollama ollama pull llama3.1:latest
     ```
@@ -112,7 +112,7 @@ To run the Knowledge Assistant on your machine:
 
 4. **Ask a question**
 
-    - Using the provided helper script: 
+    Using the provided helper script: 
     ```
     ./ask.sh
     ```
