@@ -93,19 +93,19 @@ To run the Knowledge Assistant on your machine:
 2. **Build and start the containers**
 
     Make sure Docker is running, then run: 
-    ```
+    ```bash
     docker compose up --build
     ```
 
     This starts: 
-    - FastAPI server (listening on http://127.0.0.1:8000)
+    - FastAPI server (`listening on http://127.0.0.1:8000`)
 
-    - Ollama LLM backend (on port 11434)
+    - Ollama LLM backend (on `port 11434`)
 
 3. **Pull the model (only needed for the first run)**
 
     In another terminal: 
-    ```
+    ```bash
     docker compose exec ollama ollama pull llama3.1:latest
     ```
 
@@ -113,17 +113,17 @@ To run the Knowledge Assistant on your machine:
 4. **Ask a question**
 
     Using the provided helper script: 
-    ```
+    ```bash
     ./ask.sh
     ```
 
     Example: 
-    ```
+    ```text
     Enter ticket text: My domain was suspended and I didn’t get any notice. How do I reactivate it?
     ```
 
     The system will return a structured JSON response like: 
-    ```
+    ```json
     {
       "answer": "Update your WHOIS details and contact support to request reactivation.",
       "references": ["Policy: Domain Suspension Guidelines, Section 4.2"],
