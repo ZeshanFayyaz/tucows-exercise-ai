@@ -71,6 +71,11 @@ To run the Knowledge Assistant on your machine:
 
 4. **Ask a question**
 
+   Make the provided helper script executable:  
+   ```bash
+   chmod +x ./ask.sh
+   ```
+
     Using the provided helper script: 
     ```bash
     ./ask.sh
