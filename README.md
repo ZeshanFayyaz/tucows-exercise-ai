@@ -170,5 +170,6 @@ These are set automatically in `docker-compose.yml`, but can be overridden.
 - Add support for multi-turn conversations (not just single tickets)  
 - Improve action classification with a larger set of workflows  
 - Experiment with faster/smaller LLM models to reduce response latency (smaller models show to decrease response quality severely) 
+- Optimize for GPU inference when available. 
 
 
