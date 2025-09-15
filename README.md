@@ -24,8 +24,6 @@ The result is that support agents get clear, structured answers without having t
 - **Pydantic** - schema validation for request and response models
 - **Docker Compose** - setup for reproducible local deployment
 - **Pytest** - unit testing framework to ensure quality and reliability
-- **Controlled action space** – the assistant selects from a predefined set of support actions. This guarantees consistent and schema-compliant outputs. It makes the system more reliable and integration-ready, while still leaving room to expand the action set over time.
-
 
 ---
 
@@ -37,6 +35,7 @@ The result is that support agents get clear, structured answers without having t
 - **Expandable action set** – includes common support workflows like WHOIS updates, abuse escalation, billing, and more.  
 - **Containerized setup** – everything runs through Docker Compose with one command.   
 - **Unit tested** – core pieces (models, RAG, LLM integration) covered with simple pytest tests.  
+- **Controlled action space** – the assistant selects from a predefined set of support actions. This guarantees consistent and schema-compliant outputs. It makes the system more reliable and integration-ready, while still leaving room to expand the action set over time.
 
 ---
 
