@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # 2. Set working directory
 WORKDIR /app
 
-# 3. Install system dependencies for numpy/faiss
+# 3. Install system dependencies for numpy and faiss
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libopenblas-dev \

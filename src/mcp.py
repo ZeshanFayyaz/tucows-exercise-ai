@@ -1,3 +1,25 @@
+"""
+This module defines the MCP prompt-building layer. It adheres strictly to MSP policies. 
+
+It is responsible for the following: 
+
+1. Defining the allowed set of 'action_required' values that the LLM can return 
+    - Centralized as a single source of truth for validation and testing
+
+2. Constructing structured prompts for the LLM 
+    - Wraps the user's ticket text and knowledge base chinks
+    - Injects context into a strict schema definition 
+    - Enforces MCP princples
+        - Context grounding 
+        - Explicit task definition 
+        - Schema compliance
+
+3. Returning a formatted string prompt that tells the model: 
+    - Who it is 
+    - What context to use 
+    - What format to respond in
+"""
+
 from typing import List, Dict
 
 ALLOWED_ACTIONS = [

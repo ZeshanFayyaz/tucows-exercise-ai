@@ -1,3 +1,18 @@
+"""
+This module provides a wrapper around the LLM backend 
+
+It is responsible for the following: 
+
+1. Building a client for Ollama 
+2. Sending MCP-compliant prompts and enforcing JSON-only responses 
+3. Handling common failure cases, such as: 
+    - Malformed JSON
+    - Invalid schema fields 
+    - API errors 
+4. Guaranteeing that every call produces a valid 'TicketResponse' object
+   such that the rest of the assistant never has to worry about validation 
+"""
+
 import os
 import json
 import re
@@ -18,18 +33,24 @@ def get_client() -> OpenAI:
     """
     base_url = os.getenv("OPENAI_BASE_URL")
     api_key = os.getenv("OPENAI_API_KEY", "EMPTY")
+
+    # Configure client if using a custom base_url
     if base_url:
         return OpenAI(base_url=base_url, api_key=api_key)
+
+    # Otherwise, return to default
     return OpenAI(api_key=api_key)
 
 
 def _strip_to_json(text: str) -> str:
     """
     Extract the first {...} JSON block from model output.
-    Removes ```json fences if present.
+    Removes ```json ..```  fences if present.
     """
     if "```" in text:
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
+    
+    # Find the first and last braces and return the enclosed block
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -44,23 +65,29 @@ def _coerce_to_schemaish(data: Dict[str, Any]) -> Dict[str, Any]:
     - action_required -> one of ALLOWED_ACTIONS (fallback: request_more_info)
     - answer -> str
     """
-    refs = data.get("references", [])
+    refs = data.get("references", []) # Normalize references
     if isinstance(refs, str):
-        refs = [refs]
+        refs = [refs] # Wrap in list
     elif not isinstance(refs, list):
-        refs = []
+        refs = [] # Fallback
     data["references"] = [str(r) for r in refs]
 
+    # Normalize
     act = str(data.get("action_required", "request_more_info"))
     if act not in ALLOWED_ACTIONS:
         act = "request_more_info"
     data["action_required"] = act
 
+    # Ensure answer is a string
     data["answer"] = str(data.get("answer", ""))
     return data
 
 
 def _fallback_ticket(message: str) -> TicketResponse:
+    """
+    Fallback TicketResponse if LLM fails or times out.
+    - Returns a safe, minimal response instead of crashing the API.
+    """
     return TicketResponse(
         answer=message,
         references=[],
@@ -70,8 +97,11 @@ def _fallback_ticket(message: str) -> TicketResponse:
 
 def call_llm(prompt: str, model: Optional[str] = None) -> TicketResponse:
     """
-    Call the LLM with the MCP prompt and enforce JSON schema.
-    Returns a validated TicketResponse, with one repair attempt if needed.
+    Main entrypoint: call the LLM with a structured MCP prompt.
+    - Sends messages to the model and requests JSON-only output.
+    - Attempts parsing and coercion into TicketResponse schema.
+    - If output is invalid JSON, performs one repair attempt.
+    - If API errors occur, falls back gracefully.
     """
     client = get_client()
     model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -95,7 +125,7 @@ def call_llm(prompt: str, model: Optional[str] = None) -> TicketResponse:
         )
         text = resp.choices[0].message.content.strip()
 
-        # Parse
+        # Try parsing a JSON direcrtly
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
@@ -107,7 +137,7 @@ def call_llm(prompt: str, model: Optional[str] = None) -> TicketResponse:
             data = _coerce_to_schemaish(data)
             return TicketResponse(**data)
         except (ValidationError, TypeError, json.JSONDecodeError):
-            # One repair pass: ask the model to fix the JSON
+            # One repair pass
             repair_messages = messages + [
                 {
                     "role": "system",
@@ -130,6 +160,7 @@ def call_llm(prompt: str, model: Optional[str] = None) -> TicketResponse:
             data2 = _coerce_to_schemaish(data2)
             return TicketResponse(**data2)
 
+    # Error handling mechanism
     except (APIConnectionError, RateLimitError, APIStatusError) as e:
         return _fallback_ticket(f"LLM API error: {e.__class__.__name__}: {str(e)}")
     except Exception as e:

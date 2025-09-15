@@ -1,3 +1,15 @@
+"""
+Implements the Retrieval Augmented Generation (RAG) layer.
+
+- Reads reference docs from disk and splits them into overlapping chunks.
+- Embeds chunks with SentenceTransformers and indexes them in FAISS.
+- Provides a 'KnowledgeBase' class that can retrieve the top-k most relevant
+  chunks for a given ticket query.
+
+The purpose is to supply context from provided documentation to the LLM so responses
+are accurate.
+"""
+
 import os, glob, logging
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
