@@ -16,6 +16,15 @@ The result is that support agents get clear, structured answers without having t
 
 ---
 
+## Performance Note
+
+- The project runs **Ollama locally inside Docker**, no external API calls required.  
+- I am developing on a **MacBook with an Apple M-chip**. Ollama uses **Apple Metal acceleration**, which gives me around **~5s response times** for short prompts.  
+- On machines with **NVIDIA GPUs (CUDA)**, it is possible to achieve even faster speeds, but I cannot enable CUDA because macOS does not support it.  
+- By default, the project uses **Llama 3.1** for higher quality responses. You can switch to a smaller model (e.g., **Phi-3 Mini**) if you want faster and lighter inference.
+
+---
+
 ## Tech Stack
 
 - **FastAPI** - lightweight framework for serving the Knowledge Assistant API
@@ -150,6 +159,61 @@ The system has several main pieces that work together:
      - `"answer"` → plain-language resolution for the support agent.  
      - `"references"` → source document chunks used to build the answer.  
      - `"action_required"` → explicit next step (if any).
+
+---
+
+## Model Comparison
+
+This project can run with different models through [Ollama](https://ollama.ai).  
+By default it uses **Llama 3.1** for higher-quality, policy-aligned outputs.  
+For lighter and faster inference, you can switch to **Phi-3 Mini**.
+
+| Aspect          | **Llama 3.1 (default)**                                   | **Phi-3 Mini (optional)**                           |
+|-----------------|-----------------------------------------------------------|----------------------------------------------------|
+| **Parameters**  | ~8B                                                       | ~3.8B                                              |
+| **Disk Size**   | ~4.9 GB (quantized)                                       | ~2–3 GB (quantized)                                |
+| **Response Time (Mac M-chip)** | ~5s for short prompts                        | ~3–4s for short prompts (lighter, but not always faster due to optimizations) |
+| **Output Style**| Concise, structured, policy-specific, clearer references  | More verbose, broader reasoning, sometimes looser references |
+| **Best For**    | Production-like demo quality, clear structured outputs    | Faster local experimentation, reduced resource usage |
+
+---
+
+### Example Ticket
+
+**Ticket:**  
+`"My domain was suspended and I didn’t get any notice. How do I reactivate it?"`
+
+**Llama 3.1 (default)**  
+```json
+{
+  "answer": "To reactivate your domain, please update the WHOIS information to ensure accuracy and resolve any outstanding billing issues.",
+  "references": [
+    "# Policy: Domain Suspension Guidelines",
+    "Section 4.2 — Suspension Triggers",
+    "Section 6 — Reactivation"
+  ],
+  "action_required": "update_whois"
+}
+```
+
+**Phi-3 Mini (Optional)**
+```json
+{
+  "answer": "To restore your suspended domain, you need to update the WHOIS information for accuracy, resolve outstanding billing issues if there are any unpaid invoices or payment failures, and contact the abuse team after resolving underlying problems related to misconduct.",
+  "references": [
+    "Policy Domain Suspension, chunk 1",
+    "Policy Billing, chunk 1"
+  ],
+  "action_required": "request_more_info"
+}
+
+```
+Comparison:
+
+Llama 3.1 gives a shorter, more precise response with clearly cited policies and a single required action.
+
+Phi-3 Mini gives a longer, more verbose answer with broader conditions and looser references, showing its lighter nature but less precision.
+
 
 ---
 
