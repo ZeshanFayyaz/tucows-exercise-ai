@@ -16,7 +16,7 @@ The result is that support agents get clear, structured answers without having t
 
 ---
 
-## Performance Note
+## Performance Note (Important)
 
 - The project runs **Ollama locally inside Docker**, no external API calls required.  
 - I am developing on a **MacBook with an Apple M-chip**. Ollama uses **Apple Metal acceleration**, which gives me around **~5s response times** for short prompts.  
